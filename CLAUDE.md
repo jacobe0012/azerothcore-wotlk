@@ -124,3 +124,71 @@ Type(Scope/Subscope): Short description (max 50 chars)
 - AI tool usage must be disclosed in PRs
 - In-game testing expected
 - Changes to generic code require regression testing of related systems
+
+## Fork / Branch Setup
+
+This working copy is a **personal fork** of the upstream playerbots repo. Two remotes, two branches — they have distinct purposes, don't mix them up.
+
+### Remotes
+
+- `origin` → `https://github.com/jacobe0012/azerothcore-wotlk.git` (the user's fork)
+- `upstream` → `https://github.com/mod-playerbots/azerothcore-wotlk.git` (original author)
+
+### Branches
+
+- `main` → tracks `upstream/Playerbot`. Pure mirror of original author. **Never commit user work here.** Used only for pulling upstream updates.
+- `dev` → tracks `origin/dev`. User's work branch. All user changes (including custom SQL, configs, submodule pin) live here.
+
+### Syncing upstream into dev
+```bash
+git checkout main && git pull              # pull original's latest into main
+git checkout dev && git merge main         # bring updates into dev
+git push                                   # push to user's fork
+```
+
+## Submodule: mod-playerbots
+
+`modules/mod-playerbots/` is a **git submodule** pointing at `https://github.com/mod-playerbots/mod-playerbots.git`. It is pinned to a specific commit in `.gitmodules` and is NOT part of the upstream repo's tree (upstream ignores `/modules/*`).
+
+### Cloning this fork fresh
+```bash
+git clone --recurse-submodules https://github.com/jacobe0012/azerothcore-wotlk.git
+# Or after a plain clone:
+git submodule update --init --recursive
+```
+
+### Updating the module to its latest master
+```bash
+cd modules/mod-playerbots && git pull origin master && cd ../..
+git add modules/mod-playerbots
+git commit -m "chore(Module): Update mod-playerbots"
+git push
+```
+
+## Files Force-Tracked Despite .gitignore
+
+Upstream's `.gitignore` excludes these, but they are force-added on the `dev` branch to persist user's local setup. Do NOT remove them, and do NOT edit `.gitignore` to "fix" the warnings — they are intentionally tracked via `git add -f`:
+
+| Path | Purpose |
+|------|---------|
+| `data/sql/custom/db_world/zhCN/` | Chinese localization SQL (user-provided) |
+| `docker-compose.override.yml` | Local Docker override (mounts `modules/` read-only into worldserver) |
+| `env/dist/etc/authserver.conf` | Auth server config (Docker overrides DB info via env vars) |
+| `env/dist/etc/worldserver.conf` | World server config (Docker overrides DB info via env vars) |
+| `env/dist/etc/dbimport.conf` | DB import config |
+| `env/dist/etc/modules/playerbots.conf.dist` | Playerbots module config template |
+
+### Still ignored (do not commit)
+
+- `.claude/`, `.env` — tool config / secrets
+- `env/dist/logs/*.log` — runtime logs
+- Root-level `*.conf.dist` — build-generated templates
+
+## Docker workflow (this fork)
+
+- Start everything: `docker compose up -d --build`
+- Restart services only (no data touched): `docker compose restart ac-worldserver ac-authserver`
+- Reload client data volume (~3GB, destroys `ac-client-data` volume): stop worldserver, `docker volume rm azerothcore-playerbots_ac-client-data`, then `docker compose up -d`
+- Reset SQL databases (destroys all character/world/auth data): stop servers, `docker volume rm azerothcore-playerbots_ac-database`, then `docker compose up -d`
+
+The real DB root password lives in `.env` (ignored). Conf files use placeholder `acore/acore` which Docker overrides at runtime via `AC_LOGIN_DATABASE_INFO` etc. env vars in `docker-compose.yml`.
