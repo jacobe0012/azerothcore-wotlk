@@ -1,7 +1,11 @@
 services:
   ac-worldserver:
+    build:
+      args:
+        CMAKE_EXTRA_OPTIONS: -DLUA_VERSION=luajit
     volumes:
       - ./modules:/azerothcore/modules:ro
+      - ./lua_scripts:/azerothcore/lua_scripts:ro
 
   ac-register:
     container_name: ac-register
