@@ -2,3 +2,34 @@ services:
   ac-worldserver:
     volumes:
       - ./modules:/azerothcore/modules:ro
+
+  ac-register:
+    container_name: ac-register
+    build:
+      context: ./tools/registration
+      args:
+        WSR_VERSION: 2.0.3
+    networks:
+      - ac-network
+    depends_on:
+      ac-database:
+        condition: service_healthy
+    environment:
+      BASE_URL: ${REGISTER_BASE_URL:-http://localhost:8080}
+      PAGE_TITLE: ${REGISTER_PAGE_TITLE:-AzerothCore Register}
+      DEFAULT_LANGUAGE: ${REGISTER_DEFAULT_LANGUAGE:-chinese-simplified}
+      REALMLIST: ${REGISTER_REALMLIST:-127.0.0.1}
+      REALM_NAME: ${REGISTER_REALM_NAME:-AzerothCore}
+      DB_HOST: ac-database
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: ${DOCKER_DB_ROOT_PASSWORD:-password}
+      AUTH_DB_NAME: acore_auth
+      CHAR_DB_NAME: acore_characters
+      CAPTCHA_TYPE: ${REGISTER_CAPTCHA_TYPE:-0}
+      CAPTCHA_KEY: ${REGISTER_CAPTCHA_KEY:-}
+      CAPTCHA_SECRET: ${REGISTER_CAPTCHA_SECRET:-}
+      DEBUG_MODE: ${REGISTER_DEBUG_MODE:-false}
+    ports:
+      - "${REGISTER_PORT:-8080}:80"
+    restart: unless-stopped
